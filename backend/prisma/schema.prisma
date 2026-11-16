@@ -1,0 +1,244 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  VOLUNTEER
+  OFFICE_TEAM
+  ADMIN
+}
+
+enum AccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum VolunteerType {
+  STUDENT
+  ALUMNI
+}
+
+enum ConsentType {
+  DATA_USE
+  INTERVIEW_CONTACT
+  LINKEDIN_SHARE
+}
+
+enum OpportunityStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum OpportunityCategory {
+  SCHOOL_VISIT
+  ADMISSIONS_SUPPORT
+  BGV
+  MOCK_INTERVIEW
+  PANEL_INTERVIEW
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SELECTED
+  CONFIRMED
+  DECLINED
+  WITHDRAWN
+  WAITLISTED
+  REJECTED
+  ATTENDED
+  NO_SHOW
+}
+
+enum AttendanceMethod {
+  QR
+  MANUAL
+}
+
+enum BadgeType {
+  EVENT_1
+  EVENT_5
+  EVENT_10
+  HOURS_10
+  HOURS_25
+  HOURS_50
+  LEADERBOARD_TOP1
+  LEADERBOARD_TOP2
+  LEADERBOARD_TOP3
+}
+
+enum EmployerStatus {
+  PENDING
+  APPROVED
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          Role          @default(VOLUNTEER)
+  status        AccountStatus @default(PENDING)
+  type          VolunteerType?
+  employerId    String?
+  skills        String[]
+  doNotContact  Boolean       @default(false)
+  totalHours    Float         @default(0)
+  totalEvents   Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  employer      Employer?     @relation(fields: [employerId], references: [id])
+  consents      Consent[]
+  applications  Application[]
+  attendances   Attendance[]
+  badges        UserBadge[]
+  auditLogs     AuditLog[]
+}
+
+model Consent {
+  id        String      @id @default(cuid())
+  userId    String
+  type      ConsentType
+  granted   Boolean
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Employer {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  status    EmployerStatus @default(APPROVED)
+  createdAt DateTime       @default(now())
+  users     User[]
+  aliases   EmployerAlias[]
+}
+
+model EmployerAlias {
+  id         String   @id @default(cuid())
+  alias      String   @unique
+  employerId String
+  employer   Employer @relation(fields: [employerId], references: [id])
+
+  @@index([employerId])
+}
+
+model Opportunity {
+  id               String              @id @default(cuid())
+  title            String
+  description      String
+  category         OpportunityCategory
+  isOnline         Boolean             @default(false)
+  location         String?
+  meetingLink      String?
+  startAt          DateTime
+  endAt            DateTime
+  deadline         DateTime
+  capacity         Int
+  requiredSkills   String[]
+  eligibility      String?
+  status           OpportunityStatus   @default(DRAFT)
+  createdById      String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  applications     Application[]
+  attendances      Attendance[]
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  userId        String
+  opportunityId String
+  status        ApplicationStatus @default(APPLIED)
+  interested    Boolean           @default(false)
+  appliedAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  user          User              @relation(fields: [userId], references: [id])
+  opportunity   Opportunity       @relation(fields: [opportunityId], references: [id])
+
+  @@unique([userId, opportunityId])
+  @@index([opportunityId])
+  @@index([status])
+}
+
+model Attendance {
+  id            String           @id @default(cuid())
+  userId        String
+  opportunityId String
+  checkIn       DateTime?
+  checkOut      DateTime?
+  hours         Float?
+  method        AttendanceMethod @default(QR)
+  needsReview   Boolean          @default(false)
+  overrideNote  String?
+  createdAt     DateTime         @default(now())
+  user          User             @relation(fields: [userId], references: [id])
+  opportunity   Opportunity      @relation(fields: [opportunityId], references: [id])
+
+  @@index([userId])
+  @@index([opportunityId])
+  @@index([checkIn])
+}
+
+model Badge {
+  id    String    @id @default(cuid())
+  type  BadgeType @unique
+  label String
+  icon  String
+  users UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  month     String?
+  awardedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId, month])
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  recipient String
+  template  String
+  status    String
+  sentAt    DateTime @default(now())
+  meta      Json?
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String?
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  actor     User?    @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

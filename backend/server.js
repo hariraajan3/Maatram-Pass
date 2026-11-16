@@ -1,0 +1,21 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const dotenvPath = path.resolve(__dirname, '.env');
+dotenv.config({ path: dotenvPath });
+console.log(`Loaded env from: ${dotenvPath}`);
+
+const appModule = await import('./src/app.js');
+const app = appModule.default;
+const { registerCronJobs } = await import('./src/config/cron.js');
+
+const PORT = process.env.PORT || 4000;
+
+app.listen(PORT, () => {
+  console.log(`http://localhost:${PORT}`);
+  registerCronJobs();
+});
