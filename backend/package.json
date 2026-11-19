@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
+    "swagger": "node ./src/swagger.js",
     "db:push": "prisma db push",
     "seed": "node prisma/seed.js",
     "db:seed": "node prisma/seed.js",
@@ -23,7 +24,10 @@
     "nodemon": "^3.1.14",
     "pg": "^8.23.1",
     "prisma": "^7.10.1",
-    "qrcode": "^1.5.3"
+    "qrcode": "^1.5.3",
+    "swagger-autogen": "^2.23.7",
+    "swagger-ui-dist": "^5.35.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@faker-js/faker": "^8.3.1",

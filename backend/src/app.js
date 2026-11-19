@@ -1,13 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
-
+import swaggerUiDist from 'swagger-ui-dist';
 import routes from './routes/indexRoutes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 const app = express();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const pathToSwaggerUi = swaggerUiDist.absolutePath();
 
 const allowedOrigins = [
     'http://localhost:4000',
@@ -44,6 +48,27 @@ app.get('/', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
+// 1. Serve your generated swagger.json file
+app.get('/swagger.json', (req, res) => {
+    res.sendFile(path.join(__dirname, 'swagger-output.json'));
+});
+
+// 2. Override the initializer file for Swagger UI
+app.get('/docs/swagger-initializer.js', (req, res) => {
+    const initializerPath = path.join(pathToSwaggerUi, 'swagger-initializer.js');
+    const content = fs.readFileSync(initializerPath, 'utf8')
+        .replace("https://petstore.swagger.io/v2/swagger.json", "/swagger.json");
+    res.type('application/javascript').send(content);
+});
+
+// 3. Serve the rest of the static assets
+app.use('/docs', express.static(pathToSwaggerUi));
+
+// 4. Redirect root /docs to index.html
+app.get('/docs', (req, res) => res.redirect('/docs/index.html'));
+
+
 
 app.use('/api', routes);
 

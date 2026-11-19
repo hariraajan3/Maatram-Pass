@@ -1,4 +1,4 @@
-import client from './client';
+import client from './api';
 
 export const listEmployers = () =>
   client.get('/employers').then((r) => r.data);

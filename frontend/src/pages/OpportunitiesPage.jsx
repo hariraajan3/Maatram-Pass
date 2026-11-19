@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../api/client';
+import client from '../services/api';
 import Navbar from '../components/Navbar';
 import OpportunityCard from '../components/OpportunityCard';
 import LoadingSpinner from '../components/LoadingSpinner';

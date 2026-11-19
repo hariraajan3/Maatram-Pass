@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { listEmployers, suggestEmployer } from '../api/employers';
+import { listEmployers, suggestEmployer } from '../services/employers';
 import { Building2 } from 'lucide-react';
 
 export default function EmployerAutocomplete({ value, onChange, placeholder = 'Search employer...' }) {

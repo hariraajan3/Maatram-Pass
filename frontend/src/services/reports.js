@@ -1,4 +1,4 @@
-import client from './client';
+import client from './api';
 
 export const getEngagementReport = () =>
   client.get('/reports/engagement').then((r) => r.data);

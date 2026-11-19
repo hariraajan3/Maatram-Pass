@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import client from '../api/client';
+import client from '../services/api';
 import Navbar from '../components/Navbar';
 import EmployerAutocomplete from '../components/EmployerAutocomplete';
-import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import {
-  FileText, Download, Printer, Search, Calendar, Building2, Users, Clock
+  Download, Printer, Search, Building2
 } from 'lucide-react';
 
 export default function EmployerReportPage() {
@@ -14,17 +13,23 @@ export default function EmployerReportPage() {
   const [to, setTo] = useState('');
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const handleGenerateReport = async () => {
-    if (!employerId) {
+    const selectedEmployerId = typeof employerId === 'object' ? employerId?.id : employerId;
+    if (!selectedEmployerId) {
       toast.error('Please select an employer first.');
+      return;
+    }
+    if (from && to && from > to) {
+      toast.error('From date cannot be after to date.');
       return;
     }
 
     setLoading(true);
     try {
       const res = await client.get('/reports/employer', {
-        params: { employerId, from: from || undefined, to: to || undefined },
+        params: { employerId: selectedEmployerId, from: from || undefined, to: to || undefined },
       });
       setReportData(res.data);
     } catch (err) {
@@ -34,10 +39,33 @@ export default function EmployerReportPage() {
     }
   };
 
-  const handleExportCsv = () => {
-    if (!employerId) return;
-    const url = `${client.defaults.baseURL}/reports/employer/csv?employerId=${employerId}&from=${from}&to=${to}`;
-    window.open(url, '_blank');
+  const handleExportCsv = async () => {
+    const selectedEmployerId = typeof employerId === 'object' ? employerId?.id : employerId;
+    if (!selectedEmployerId) return;
+
+    setExporting(true);
+    try {
+      const res = await client.get('/reports/employer/csv', {
+        params: {
+          employerId: selectedEmployerId,
+          from: from || undefined,
+          to: to || undefined,
+        },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'employer-contribution-report.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to export CSV.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handlePrint = () => {
@@ -104,9 +132,10 @@ export default function EmployerReportPage() {
               <>
                 <button
                   onClick={handleExportCsv}
+                  disabled={exporting}
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
                 >
-                  <Download size={15} /> Export CSV
+                  <Download size={15} /> {exporting ? 'Exporting...' : 'Export CSV'}
                 </button>
                 <button
                   onClick={handlePrint}

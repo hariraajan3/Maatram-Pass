@@ -2,7 +2,6 @@ import cron from 'node-cron';
 import prisma from '../../lib/prisma.js';
 
 export function initCronJobs() {
-  console.log('⏰ Initializing scheduled cron jobs...');
 
   // 1. Nightly at 00:05 - Auto-close unclosed attendance sessions
   cron.schedule('5 0 * * *', async () => {

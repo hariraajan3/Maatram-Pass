@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import client from '../api/client';
+import client from '../services/api';
 import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
 import { QrCode, Search, CheckCircle, LogOut, AlertTriangle, Camera } from 'lucide-react';

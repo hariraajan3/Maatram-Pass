@@ -16,7 +16,6 @@ export async function register(req, res, next) {
       return res.status(409).json({ error: 'An account with this email already exists.' });
     }
 
-    // Role safety: only VOLUNTEER or OFFICE_TEAM can be requested during registration
     const userRole = role === 'OFFICE_TEAM' ? 'OFFICE_TEAM' : 'VOLUNTEER';
     const passwordHash = await hashPassword(password);
 

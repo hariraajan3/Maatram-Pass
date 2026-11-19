@@ -1,4 +1,4 @@
-import client from './client';
+import client from './api';
 
 export const listOpportunities = (filters) =>
   client.get('/opportunities', { params: filters }).then((r) => r.data);

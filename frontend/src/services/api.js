@@ -1,26 +1,42 @@
-import axios from 'axios';
+import axios from "axios";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
-  headers: { 'Content-Type': 'application/json' }
-});
+export const getBaseUrl = () => {
+  let url = import.meta.env.BACKEND_URL || 'http://localhost:4000';
+  if (!url.endsWith('/api')) url += '/api';
+  return url;
+};
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+const BASE_URL = getBaseUrl();
+
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
   }
-  return config;
 });
 
-client.interceptors.response.use(
+export const setAuthToken = (token) => {
+  if (token) {
+    apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete apiClient.defaults.headers.common.Authorization;
+  }
+};
+
+export const api = apiClient;
+
+api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+    if (
+      error.response?.status === 401 &&
+      error.response?.data?.code === "TOKEN_EXPIRED"
+    ) {
+      localStorage.removeItem("kk_session");
+
+      window.location.href = "/login";
     }
+
     return Promise.reject(error);
   }
 );

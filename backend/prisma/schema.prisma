@@ -1,7 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Maatram Volunteer Pass - Prisma schema (Phase 1, trimmed)
+// Prisma 6 or older: add   url = env("DATABASE_URL")   inside the datasource block.
+// Prisma 7: the connection URL goes in prisma.config.ts instead.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,6 +9,10 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ===========================================================================
+// Enums
+// ===========================================================================
 
 enum Role {
   VOLUNTEER
@@ -27,6 +30,7 @@ enum AccountStatus {
 enum VolunteerType {
   STUDENT
   ALUMNI
+  SUPPORTER
 }
 
 enum ConsentType {
@@ -50,18 +54,14 @@ enum OpportunityCategory {
   BGV
   MOCK_INTERVIEW
   PANEL_INTERVIEW
+  OTHERS
 }
 
 enum ApplicationStatus {
   APPLIED
   SELECTED
-  CONFIRMED
-  DECLINED
-  WITHDRAWN
-  WAITLISTED
   REJECTED
   ATTENDED
-  NO_SHOW
 }
 
 enum AttendanceMethod {
@@ -81,33 +81,90 @@ enum BadgeType {
   LEADERBOARD_TOP3
 }
 
-enum EmployerStatus {
-  PENDING
-  APPROVED
-}
+// Users and profiles
 
 model User {
-  id            String        @id @default(cuid())
-  name          String
-  email         String        @unique
-  passwordHash  String
-  role          Role          @default(VOLUNTEER)
-  status        AccountStatus @default(PENDING)
-  type          VolunteerType?
-  employerId    String?
-  skills        String[]
-  doNotContact  Boolean       @default(false)
-  totalHours    Float         @default(0)
-  totalEvents   Int           @default(0)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  employer      Employer?     @relation(fields: [employerId], references: [id])
-  consents      Consent[]
-  applications  Application[]
-  attendances   Attendance[]
-  badges        UserBadge[]
-  auditLogs     AuditLog[]
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(VOLUNTEER)
+  status       AccountStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  volunteerProfile VolunteerProfile?
+  staffProfile     StaffProfile?
+
+  consents             Consent[]
+  applications         Application[]
+  attendances          Attendance[]  @relation("AttendanceVolunteer")
+  recordedAttendances  Attendance[]  @relation("AttendanceRecorder")
+  createdOpportunities Opportunity[] @relation("OpportunityCreator")
+  badges               UserBadge[]
+  auditLogs            AuditLog[]
+
+  @@index([role, status])
 }
+
+// Shared by every volunteer (student, alumni, supporter).
+model VolunteerProfile {
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  type        VolunteerType
+  totalHours  Float         @default(0) // cache only; recalculate from Attendance
+  totalEvents Int           @default(0) // cache only; recalculate from Attendance
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentDetails StudentDetails?
+  alumniDetails  AlumniDetails?
+
+  @@index([type])
+}
+
+// Only for students.
+model StudentDetails {
+  id          String  @id @default(cuid())
+  profileId   String  @unique
+  collegeName String
+  currentYear Int
+  passoutYear Int
+  degreeCourse   String?
+   maatramId   String?       @unique 
+
+  profile VolunteerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([passoutYear])
+}
+
+// Only for alumni.
+model AlumniDetails {
+  id             String  @id @default(cuid())
+  profileId      String  @unique
+  collegeName    String
+  graduationYear Int
+  maatramId   String?       @unique 
+  companyName    String? 
+  designation    String?
+
+  profile VolunteerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([companyName])
+  @@index([graduationYear])
+}
+
+// For office team and admin accounts.
+model StaffProfile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  designation String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Consent (append-only: insert a new row whenever a choice changes)
 
 model Consent {
   id        String      @id @default(cuid())
@@ -115,28 +172,13 @@ model Consent {
   type      ConsentType
   granted   Boolean
   createdAt DateTime    @default(now())
-  user      User        @relation(fields: [userId], references: [id])
 
-  @@index([userId])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
 }
 
-model Employer {
-  id        String         @id @default(cuid())
-  name      String         @unique
-  status    EmployerStatus @default(APPROVED)
-  createdAt DateTime       @default(now())
-  users     User[]
-  aliases   EmployerAlias[]
-}
-
-model EmployerAlias {
-  id         String   @id @default(cuid())
-  alias      String   @unique
-  employerId String
-  employer   Employer @relation(fields: [employerId], references: [id])
-
-  @@index([employerId])
-}
+// Opportunities, applications, attendance
 
 model Opportunity {
   id               String              @id @default(cuid())
@@ -149,15 +191,20 @@ model Opportunity {
   startAt          DateTime
   endAt            DateTime
   deadline         DateTime
-  capacity         Int
-  requiredSkills   String[]
+  neededVolunteers Int
   eligibility      String?
   status           OpportunityStatus   @default(DRAFT)
   createdById      String
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-  applications     Application[]
-  attendances      Attendance[]
+
+  createdBy    User          @relation("OpportunityCreator", fields: [createdById], references: [id])
+  applications Application[]
+  attendances  Attendance[]
+
+  @@index([status, startAt])
+  @@index([category])
+  @@index([createdById])
 }
 
 model Application {
@@ -167,12 +214,14 @@ model Application {
   status        ApplicationStatus @default(APPLIED)
   interested    Boolean           @default(false)
   appliedAt     DateTime          @default(now())
+  selectedAt    DateTime?
   updatedAt     DateTime          @updatedAt
-  user          User              @relation(fields: [userId], references: [id])
-  opportunity   Opportunity       @relation(fields: [opportunityId], references: [id])
 
-  @@unique([userId, opportunityId])
-  @@index([opportunityId])
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opportunityId]) // also serves "all applications of one user"
+  @@index([opportunityId, status])
   @@index([status])
 }
 
@@ -184,22 +233,28 @@ model Attendance {
   checkOut      DateTime?
   hours         Float?
   method        AttendanceMethod @default(QR)
-  needsReview   Boolean          @default(false)
-  overrideNote  String?
+  recordedById  String? // staff member who scanned or entered it
   createdAt     DateTime         @default(now())
-  user          User             @relation(fields: [userId], references: [id])
-  opportunity   Opportunity      @relation(fields: [opportunityId], references: [id])
 
-  @@index([userId])
+  user        User        @relation("AttendanceVolunteer", fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy  User?       @relation("AttendanceRecorder", fields: [recordedById], references: [id])
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opportunityId]) 
   @@index([opportunityId])
   @@index([checkIn])
+  @@index([userId, checkIn]) 
+  @@index([recordedById])
 }
+
+// Badges
 
 model Badge {
   id    String    @id @default(cuid())
   type  BadgeType @unique
   label String
   icon  String
+
   users UserBadge[]
 }
 
@@ -207,22 +262,19 @@ model UserBadge {
   id        String   @id @default(cuid())
   userId    String
   badgeId   String
-  month     String?
+  // "ALL" for event/hour badges, "2026-11" style for monthly leaderboard badges.
+  month     String   @default("ALL")
   awardedAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
-  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id])
 
   @@unique([userId, badgeId, month])
+  @@index([badgeId])
+  @@index([month])
 }
 
-model EmailLog {
-  id        String   @id @default(cuid())
-  recipient String
-  template  String
-  status    String
-  sentAt    DateTime @default(now())
-  meta      Json?
-}
+// Activity log
 
 model AuditLog {
   id        String   @id @default(cuid())
@@ -232,13 +284,10 @@ model AuditLog {
   entityId  String?
   meta      Json?
   createdAt DateTime @default(now())
-  actor     User?    @relation(fields: [actorId], references: [id])
+
+  actor User? @relation(fields: [actorId], references: [id])
 
   @@index([actorId])
   @@index([createdAt])
-}
-
-model Setting {
-  key   String @id
-  value String
+  @@index([entity, entityId])
 }

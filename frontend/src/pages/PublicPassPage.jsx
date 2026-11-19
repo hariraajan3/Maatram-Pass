@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import client from '../api/client';
+import client from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import BadgeDisplay from '../components/BadgeDisplay';
 import { Heart, Trophy, Clock, Calendar, Award, ExternalLink } from 'lucide-react';

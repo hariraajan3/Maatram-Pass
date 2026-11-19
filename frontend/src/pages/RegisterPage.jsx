@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { register as registerApi } from '../api/auth';
+import { register as registerApi } from '../services/auth';
 import EmployerAutocomplete from '../components/EmployerAutocomplete';
 import toast from 'react-hot-toast';
 import { UserPlus, Heart, Info } from 'lucide-react';
@@ -138,7 +138,10 @@ export default function RegisterPage() {
             <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Employer / Organization</label>
             <EmployerAutocomplete
               value={formData.employerId}
-              onChange={(empId) => setFormData({ ...formData, employerId: empId })}
+              onChange={(employer) => setFormData({
+                ...formData,
+                employerId: typeof employer === 'object' ? employer?.id || '' : employer,
+              })}
             />
             <span className="text-[11px] text-slate-400 mt-0.5 block">For aggregate employer impact reports.</span>
           </div>

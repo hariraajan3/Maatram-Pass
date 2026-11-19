@@ -1,4 +1,4 @@
-import client from './client';
+import client from './api';
 
 export const checkIn = (userId, opportunityId, method, overrideNote) =>
   client.post('/attendance/checkin', { userId, opportunityId, method, overrideNote }).then((r) => r.data);

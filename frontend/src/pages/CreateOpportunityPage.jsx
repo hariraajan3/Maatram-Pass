@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../api/client';
+import client from '../services/api';
 import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
 import { PlusCircle, ArrowLeft } from 'lucide-react';
